@@ -41,6 +41,15 @@ func handleFuncUserCheckTemplate(handlefunc HandleFuncTemplateType) HandleFuncTy
     return outfunc
 }
 
+var templateFuncMap = template.FuncMap{"eq": func(a, b string) bool { return a == b }}
+func newTemplateFromFile(filename string) *template.Template{
+    var temp = template.New(filename) 
+    return template.Must(temp.Funcs(templateFuncMap).ParseFiles(filename))
+}
+
+var guestbookTemplate = newTemplateFromFile("index.html")
+var editTemplate = newTemplateFromFile("edit.html")
+
 func init() {
     router()
 }
@@ -86,33 +95,6 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 }
 
-var guestbookTemplate = template.Must(template.New("index").Funcs(template.FuncMap{"eq": func(a, b string) bool { return a == b }}).Parse(guestbookTemplateHTML))
-
-const guestbookTemplateHTML = `
-<html>
-  <body>
-      <form action="/create" method="post">
-      <div><textarea name="content" rows="3" cols="60"></textarea></div>
-      <div><input type="submit" value="create"></div>
-    </form>
-    {{ $CurrentUser := .CurrentUser}}
-    <ul>
-    {{range .Greetings}}
-    <li>
-    {{with .Author}}
-        <b>{{.}}</b> said:
-    {{else}}
-        Guest said:
-    {{end}}
-    <pre>{{.Content}}</pre>
-    <p>{{ if eq $CurrentUser .Author}} <a href="/edit?id={{.Id}}">Edit</a> / <a href="/destroy?id={{.Id}}">Delete</a> {{end}}</p>
-    </li>
-    {{end}}
-    </ul>
-
-  </body>
-</html>
-`
 
 func create(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.User) {
     g := Greeting{
@@ -150,19 +132,6 @@ func edit(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.U
     }
 
 }
-
-var editTemplate = template.Must(template.New("edit").Funcs(template.FuncMap{"eq": func(a, b string) bool { return a == b }}).Parse(editTemplateHTML))
-
-const editTemplateHTML = `
-<html>
-    <body>
-        <form action="/update" method="post">
-            <div><textarea name="content" rows="3" cols="60">{{.Content}}</textarea></div>
-        <div><input type="submit" value="update"><input type="hidden" name="id" value={{.Id}} /></div>
-        </form>
-    </body>
-</html>
-`
 
 func update(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.User) {
     id, err := strconv.Atoi(r.FormValue("id"))
