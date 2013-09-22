@@ -23,16 +23,34 @@ type Context struct {
     CurrentUser string
 }
 
+type HandleFuncType func (http.ResponseWriter, *http.Request)
+type HandleFuncTemplateType func (http.ResponseWriter, *http.Request, appengine.Context, *user.User)
+
+func handleFuncUserCheckTemplate(handlefunc HandleFuncTemplateType) HandleFuncType {
+    outfunc := func (w http.ResponseWriter, r *http.Request) {
+        c := appengine.NewContext(r)
+        u := user.Current(c)
+        if u == nil {
+            fmt.Fprint(w, "permission denied")
+            return
+        }
+        
+        handlefunc(w,r,c,u)
+    }
+
+    return outfunc
+}
+
 func init() {
     router()
 }
 
 func router() {
     http.HandleFunc("/", index)
-    http.HandleFunc("/create", create)
-    http.HandleFunc("/destroy", destroy)
-    http.HandleFunc("/edit", edit)
-    http.HandleFunc("/update", update)
+    http.HandleFunc("/create", handleFuncUserCheckTemplate(create))
+    http.HandleFunc("/destroy", handleFuncUserCheckTemplate(destroy))
+    http.HandleFunc("/edit", handleFuncUserCheckTemplate(edit))
+    http.HandleFunc("/update", handleFuncUserCheckTemplate(update))
 }
 
 func guestbookKey(c appengine.Context) *datastore.Key {
@@ -96,13 +114,7 @@ const guestbookTemplateHTML = `
 </html>
 `
 
-func create(w http.ResponseWriter, r *http.Request) {
-    c := appengine.NewContext(r)
-    u := user.Current(c)
-    if u == nil {
-        fmt.Fprint(w, "permission denied")
-        return
-    }
+func create(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.User) {
     g := Greeting{
         Author:  u.String(),
         Content: r.FormValue("content"),
@@ -118,13 +130,7 @@ func create(w http.ResponseWriter, r *http.Request) {
     http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func edit(w http.ResponseWriter, r *http.Request) {
-    c := appengine.NewContext(r)
-    u := user.Current(c)
-    if u == nil {
-        fmt.Fprint(w, "permission denied")
-        return
-    }
+func edit(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.User) {
     id, err := strconv.Atoi(r.FormValue("id"))
     key := datastore.NewKey(c, "Greeting", "", int64(id), guestbookKey(c))
     greeting := new(Greeting)
@@ -158,14 +164,7 @@ const editTemplateHTML = `
 </html>
 `
 
-func update(w http.ResponseWriter, r *http.Request) {
-    c := appengine.NewContext(r)
-    u := user.Current(c)
-    if u == nil {
-        fmt.Fprint(w, "permission denied")
-        return
-    }
-
+func update(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.User) {
     id, err := strconv.Atoi(r.FormValue("id"))
     key := datastore.NewKey(c, "Greeting", "", int64(id), guestbookKey(c))
     greeting := new(Greeting)
@@ -189,14 +188,7 @@ func update(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusFound)
 }
 
-func destroy(w http.ResponseWriter, r *http.Request) {
-    c := appengine.NewContext(r)
-    u := user.Current(c)
-
-    if u == nil {
-        fmt.Fprint(w, "permission denied")
-    }
-
+func destroy(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.User) {
     id, err := strconv.Atoi(r.FormValue("id"))
     key := datastore.NewKey(c, "Greeting", "", int64(id), guestbookKey(c))
     err = datastore.Delete(c, key)
