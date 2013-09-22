@@ -1,2 +1,4 @@
 /app.yaml
 /index.yaml
+/.gitignore
+/.DS_Store
