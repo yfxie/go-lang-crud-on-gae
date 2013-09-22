@@ -41,6 +41,11 @@ func guestbookKey(c appengine.Context) *datastore.Key {
 
 func index(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
+	/*
+		c有Debugf, Infof, Warningf, Errorf, and Criticalf..等method可用來產生log message
+		Example:
+			c.Debugf("%v",r)
+	*/
 	if u := user.Current(c); u == nil {
 		url, err := user.LoginURL(c, r.URL.String())
 		if err != nil {
