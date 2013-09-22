@@ -5,7 +5,6 @@ import (
     "appengine/datastore"
     "appengine/user"
     "fmt"
-    "html/template"
     "net/http"
     "strconv"
     "time"
@@ -23,28 +22,26 @@ type Context struct {
     CurrentUser string
 }
 
-type HandleFuncType func (http.ResponseWriter, *http.Request)
-type HandleFuncTemplateType func (http.ResponseWriter, *http.Request, appengine.Context, *user.User)
-
-func handleFuncUserCheckTemplate(handlefunc HandleFuncTemplateType) HandleFuncType {
-    outfunc := func (w http.ResponseWriter, r *http.Request) {
-        c := appengine.NewContext(r)
-        u := user.Current(c)
-        if u == nil {
-            fmt.Fprint(w, "permission denied")
-            return
-        }
-        
-        handlefunc(w,r,c,u)
+func NewGreeting (u *user.User, content string, c appengine.Context) (*Greeting, *datastore.Key) {
+    g := &Greeting{
+        Author:  u.String(),
+        Content: content,
+        Date:    time.Now(),
     }
 
-    return outfunc
+    key := datastore.NewIncompleteKey(c, "Greeting", guestbookKey(c))
+    return g,key
 }
 
-var templateFuncMap = template.FuncMap{"eq": func(a, b string) bool { return a == b }}
-func newTemplateFromFile(filename string) *template.Template{
-    var temp = template.New(filename) 
-    return template.Must(temp.Funcs(templateFuncMap).ParseFiles(filename))
+func GetGreeting (id_str string, c appengine.Context) (*Greeting, *datastore.Key, error) {
+    id, err := strconv.Atoi(id_str)
+    key := datastore.NewKey(c, "Greeting", "", int64(id), guestbookKey(c))
+    
+    greeting := new(Greeting)
+    err = datastore.Get(c, key, greeting)
+    greeting.Id = key.IntID()
+
+    return greeting, key, err
 }
 
 var guestbookTemplate = newTemplateFromFile("index.html")
@@ -92,19 +89,12 @@ func index(w http.ResponseWriter, r *http.Request) {
     if err := guestbookTemplate.Execute(w, context); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }
-
 }
 
 
 func create(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.User) {
-    g := Greeting{
-        Author:  u.String(),
-        Content: r.FormValue("content"),
-        Date:    time.Now(),
-    }
-
-    key := datastore.NewIncompleteKey(c, "Greeting", guestbookKey(c))
-    _, err := datastore.Put(c, key, &g)
+    g,key := NewGreeting(u,r.FormValue("content"),c)
+    _, err := datastore.Put(c, key, g)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -113,34 +103,26 @@ func create(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user
 }
 
 func edit(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.User) {
-    id, err := strconv.Atoi(r.FormValue("id"))
-    key := datastore.NewKey(c, "Greeting", "", int64(id), guestbookKey(c))
-    greeting := new(Greeting)
-    err = datastore.Get(c, key, greeting)
-    greeting.Id = key.IntID()
-    if u.String() != greeting.Author {
-        fmt.Fprint(w, "permission denied")
-        return
-    }
+    greeting, _, err := GetGreeting(r.FormValue("id"),c)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
-    }
-    if err := editTemplate.Execute(w, greeting); err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
+    }else if u.String() != greeting.Author {
+        fmt.Fprint(w, "permission denied")
+        return 
     }
 
+    if err := editTemplate.Execute(w, greeting); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+    }
 }
 
 func update(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.User) {
-    id, err := strconv.Atoi(r.FormValue("id"))
-    key := datastore.NewKey(c, "Greeting", "", int64(id), guestbookKey(c))
-    greeting := new(Greeting)
-    greeting.Id = key.IntID()
-    err = datastore.Get(c, key, greeting)
-
-    if u.String() != greeting.Author {
+    greeting, key, err := GetGreeting(r.FormValue("id"),c)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }else if u.String() != greeting.Author {
         fmt.Fprint(w, "permission denied")
         return
     }
@@ -158,10 +140,16 @@ func update(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user
 }
 
 func destroy(w http.ResponseWriter, r *http.Request, c appengine.Context, u *user.User) {
-    id, err := strconv.Atoi(r.FormValue("id"))
-    key := datastore.NewKey(c, "Greeting", "", int64(id), guestbookKey(c))
-    err = datastore.Delete(c, key)
+    greeting, key, err := GetGreeting(r.FormValue("id"),c)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return 
+    }else if u.String() != greeting.Author {
+        fmt.Fprint(w, "permission denied")
+        return 
+    }
 
+    err = datastore.Delete(c, key)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
