@@ -30,7 +30,7 @@ var templateFuncMap = template.FuncMap{"eq": func(a, b string) bool { return a =
 
 func render(w http.ResponseWriter, filename string, context interface{}) error {
 	var temp = template.New(filename)
-	return template.Must(temp.Funcs(templateFuncMap).ParseFiles(filename)).Execute(w, context)
+	return template.Must(temp.Funcs(templateFuncMap).ParseFiles("templates/"+filename)).Execute(w, context)
 }
 
 func guestbookKey(c appengine.Context) *datastore.Key {
