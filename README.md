@@ -12,7 +12,7 @@ GAE是「Google應用服務引擎」在Google的平台上執行您的網路應�
 
 Datastore是GAE是的Database與一般RDBMS有些差異, 本人我也還不是很瞭解, 網路上的參考資料也不是很多, 簡單想就是Key-Value, 這些Key甚至可以有Parent, 實作過程發現常會使用到Key, datastore的方法裡若要對資料操作也常需要Key作為引數。
 
--  _注意: Go語言的主要應用並不是在網頁上, 只是此範例從網頁應用切入學習Go語言_。
+-  _本範例僅從網頁應用切入學習Go語言_。
 
 ## Demo
 
