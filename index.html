@@ -1,0 +1,22 @@
+<html>
+  <body>
+      <form action="/create" method="post">
+      <div><textarea name="content" rows="3" cols="60"></textarea></div>
+      <div><input type="submit" value="create"></div>
+    </form>
+    {{ $CurrentUser := .CurrentUser}}
+    <ul>
+    {{range .Greetings}}
+    <li>
+    {{with .Author}}
+        <b>{{.}}</b> said:
+    {{else}}
+        Guest said:
+    {{end}}
+    <pre>{{.Content}}</pre>
+    <p>{{ if eq $CurrentUser .Author}} <a href="/edit?id={{.Id}}">Edit</a> / <a href="/destroy?id={{.Id}}">Delete</a> {{end}}</p>
+    </li>
+    {{end}}
+    </ul>
+  </body>
+</html>

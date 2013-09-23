@@ -1,0 +1,8 @@
+<html>
+    <body>
+        <form action="/update" method="post">
+            <div><textarea name="content" rows="3" cols="60">{{.Content}}</textarea></div>
+        <div><input type="submit" value="update"><input type="hidden" name="id" value={{.Id}} /></div>
+        </form>
+    </body>
+</html>
