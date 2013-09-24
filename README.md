@@ -32,7 +32,7 @@ Datastore是GAE是的Database與一般RDBMS有些差異, 本人我也還不是�
 		git clone git@github.com:yfxie/go-lang-crud-on-gae.git
 		cd go-lang-crud-on-gae/
 
-	建立app.yaml檔案, 內容如下: _application請填入Step1的Application Identifier_
+	修改app.yaml檔案, 將 _Application Identifier_ 填入Step1所設的名稱
 
 		application: helloworld
 		version: 1
